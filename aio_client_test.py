@@ -1,4 +1,4 @@
-from hakunet.asyncio.client import Client
+from hakunet.asyncio import Client
 from asyncio import new_event_loop, ensure_future, sleep
 
 
