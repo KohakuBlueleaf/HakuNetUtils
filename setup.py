@@ -2,7 +2,7 @@ from setuptools import setup
 
 
 setup(
-	name = 'haku-net-utils',
+	name = 'HakuNetUtils',
 	packages = ['hakunet'],
 	zip_safe = False,
 	version = '0.1.0',
