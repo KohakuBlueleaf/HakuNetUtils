@@ -1,9 +1,9 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 
 
 setup(
 	name = 'HakuNetUtils',
-	packages = ['hakunet'],
+	packages = find_packages(),
 	zip_safe = False,
 	version = '0.1.0',
 	description = 'A simple server framework',
