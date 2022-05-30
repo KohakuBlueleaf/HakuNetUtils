@@ -1,10 +1,10 @@
-from venv import create
 from hakunet.asyncio.p2p import Node
-from time import sleep
+from sys import platform
 import asyncio
 
 
-asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+if platform == 'win32':
+  asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 main_node = Node('127.0.0.1', 10000)
 nodes: list[Node]
 NODE_AMOUNT = 5
