@@ -146,6 +146,26 @@ class Node:
     print('Node Context overview:')
     print(f'- Total nodes connected: {len(self.nodes)}')
 
+  async def start(self):
+    async def main():
+      self.server = await self.server
+      addrs = [sock.getsockname() for sock in self.server.sockets][0]
+      self.host = addrs[0]
+      self.port = addrs[1]
+      print(f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
+      async with self.server as server:
+        await server.serve_forever()
+    asyncio.ensure_future(main())
+    await asyncio.sleep(0.001)
+
+  async def stop(self):
+    print(f'Node {self.id} stopping.')
+    self.server.close()
+    await self.server.wait_closed()
+    for n in self.nodes.values():
+      await n.stop()
+    print(f'Node {self.id} stopped.')
+    
   async def handle_client(self, reader, writer):
     chost, cport = writer.get_extra_info('socket').getpeername()
     node_data = await read_msg(reader)
@@ -167,32 +187,13 @@ class Node:
       asyncio.ensure_future(new_node.event_loop())
       await new_node.started
       self.nodes[new_node.id] = new_node
+      await asyncio.sleep(0.001)
       
       await self.on_inbound_connect(new_node)
       await self._send_to_nodes(
         Node.NodeInfo(node_id, node_host, node_port)
       )
 
-  async def start(self):
-    async def main():
-      self.server = await self.server
-      addrs = [sock.getsockname() for sock in self.server.sockets][0]
-      self.host = addrs[0]
-      self.port = addrs[1]
-      print(f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
-      async with self.server as server:
-        await server.serve_forever()
-    asyncio.ensure_future(main())
-    await asyncio.sleep(0.01)
-
-  async def stop(self):
-    print(f'Node {self.id} stopping.')
-    self.server.close()
-    await self.server.wait_closed()
-    for n in self.nodes.values():
-      await n.stop()
-    print(f'Node {self.id} stopped.')
-    
   async def connect(self, host, port):
     if host == self.host and port == self.port:
       print('connect_with_node: Cannot connect with yourself!!')
@@ -222,6 +223,7 @@ class Node:
       asyncio.ensure_future(new_node.event_loop())
       await new_node.started
       self.nodes[new_node.id] = new_node
+      await asyncio.sleep(0.001)
       
       await self.on_outbound_connect(new_node)
     except Exception as e:
