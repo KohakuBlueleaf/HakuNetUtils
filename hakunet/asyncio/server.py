@@ -36,7 +36,7 @@ class Server:
         async def read(self):
             await self.server._t_event[self.tid].wait()
             data = self.server._t_mes_queue[self.tid].pop(0)
-            if self.server._t_mes_queue[self.tid]==[]:
+            if self.server._t_mes_queue[self.tid] == []:
                 self.server._t_event[self.tid].clear()
             return data
 
@@ -44,7 +44,7 @@ class Server:
         self.host = host
         self.port = port
         self.server = start_server(
-          self.handle_client, host, port
+            self.handle_client, host, port
         )
         self.contexts = []
         self.handlers = {}
@@ -104,7 +104,7 @@ class Server:
                     self._t_event[tid] = Event()
                     self._t_mes_queue[tid] = []
                     new_tsc = Server.Transaction(
-                      self, tid, writer
+                        self, tid, writer
                     )
                     asyncio.ensure_future(self.transactions[ttype](new_tsc))
                 case [event, args, kwargs]:

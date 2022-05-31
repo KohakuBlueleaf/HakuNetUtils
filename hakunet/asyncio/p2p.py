@@ -13,11 +13,11 @@ from hakunet.utils import *
 MAINLOOP_DELAY = 0.001
 RECV_TIMEOUT = 1
 DEFAULT_EVENTS = {
-  'on_outbound_connect',
-  'on_inbound_connect',
-  'on_inbound_disconnect',
-  'on_outbound_disconnect',
-  'on_disconnect_outbound',
+    'on_outbound_connect',
+    'on_inbound_connect',
+    'on_inbound_disconnect',
+    'on_outbound_disconnect',
+    'on_disconnect_outbound',
 }
 
 
@@ -52,8 +52,8 @@ class Node:
             self.parent_node: "Node" = parent_node
 
             self.parent_node.debug_print(
-              'NodeContext.send: Started with client'
-              f'({self.id}) on {self.host}:{self.port}'
+                'NodeContext.send: Started with client'
+                f'({self.id}) on {self.host}:{self.port}'
             )
 
         @property
@@ -94,8 +94,8 @@ class Node:
         def __str__(self):
             main = self.parent_node
             return (
-              f'<NodeContext: {main.host}:{main.port} <->'
-              f' {self.host}:{self.port} ({self.id})>'
+                f'<NodeContext: {main.host}:{main.port} <->'
+                f' {self.host}:{self.port} ({self.id})>'
             )
         __repr__ = __str__
 
@@ -108,9 +108,9 @@ class Node:
         self.clients = []
 
         t = (
-          f'{self.host}:{self.port}'
-          f'{getpid()}'
-          f'{random.randint(1, 16**8)}'
+            f'{self.host}:{self.port}'
+            f'{getpid()}'
+            f'{random.randint(1, 16**8)}'
         )
         self.id = shake_256(encode(t)).hexdigest(4)
 
@@ -152,7 +152,8 @@ class Node:
             addrs = [sock.getsockname() for sock in self.server.sockets][0]
             self.host = addrs[0]
             self.port = addrs[1]
-            print(f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
+            print(
+                f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
             async with self.server as server:
                 await server.serve_forever()
         asyncio.ensure_future(main())
@@ -174,11 +175,11 @@ class Node:
             await write_with_len_async(writer, ['', 0, self.id])
 
             new_node = Node.Context(
-              self, reader, writer,
-              node_id, chost, cport
+                self, reader, writer,
+                node_id, chost, cport
             )
 
-            if len(node_id)==10:
+            if len(node_id) == 10:
                 self.clients.append(new_node)
             elif new_node.id in self.nodes:
                 await new_node.stop()
@@ -191,7 +192,7 @@ class Node:
 
             await self.on_inbound_connect(new_node)
             await self._send_to_nodes(
-              Node.NodeInfo(node_id, node_host, node_port)
+                Node.NodeInfo(node_id, node_host, node_port)
             )
 
     async def connect(self, host, port):
@@ -212,8 +213,8 @@ class Node:
             node_data = await read_msg(reader)
 
             new_node = Node.Context(
-              self, reader, writer,
-              node_data[2], host, port
+                self, reader, writer,
+                node_data[2], host, port
             )
 
             if new_node.id in self.nodes:
@@ -227,7 +228,8 @@ class Node:
 
             await self.on_outbound_connect(new_node)
         except Exception as e:
-            self.debug_print('TcpServer.connect_with_node: Could not connect with node. (' + str(e) + ')')
+            self.debug_print(
+                'TcpServer.connect_with_node: Could not connect with node. (' + str(e) + ')')
 
     async def delete_closed_contexts(self):
         deleted = []
@@ -252,12 +254,12 @@ class Node:
                 await n.send(data)
             except Exception as e:
                 self.debug_print(
-                  f'Node send_to_node: Error while sending data to the node ({e})'
+                    f'Node send_to_node: Error while sending data to the node ({e})'
                 )
 
         else:
             self.debug_print(
-              'Node send_to_node: Could not send the data, node is not found!'
+                'Node send_to_node: Could not send the data, node is not found!'
             )
 
     async def send(self, data):
@@ -291,7 +293,8 @@ class Node:
             node.stop()
             del self.nodes[node.id]
         else:
-            print('Node disconnect_with_node: cannot disconnect with a node with which we are not connected.')
+            print(
+                'Node disconnect_with_node: cannot disconnect with a node with which we are not connected.')
 
     async def on_outbound_connect(self, node):
         self.debug_print('on_outbound_connect: ' + node.id)
@@ -314,7 +317,8 @@ class Node:
             await self.callback('on_outbound_disconnect', node, [], {})
 
     async def on_disconnect_outbound(self, node):
-        self.debug_print('node wants to disconnect with oher outbound node: ' + node.id)
+        self.debug_print(
+            'node wants to disconnect with oher outbound node: ' + node.id)
         if self.callback is not None:
             await self.callback('on_disconnect_outbound', node, [], {})
 
@@ -322,7 +326,7 @@ class Node:
         self.debug_print('node_message: ' + node.id + ': ' + str(data))
 
         if isinstance(data, Node.NodeInfo):
-            if data.id!=self.id and data.id not in self.nodes:
+            if data.id != self.id and data.id not in self.nodes:
                 await self.connect(data.host, data.port)
         else:
             event, args, kwargs = data
@@ -365,8 +369,8 @@ class Client():
 
         except Exception as e:
             self.debug_print(
-              'TcpServer.connect_with_node:'
-              f' Could not connect with node. ({e})'
+                'TcpServer.connect_with_node:'
+                f' Could not connect with node. ({e})'
             )
 
     def __str__(self):

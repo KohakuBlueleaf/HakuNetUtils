@@ -45,7 +45,7 @@ class Client:
         async def read(self):
             await self.client._t_event[self.tid].wait()
             data = self.client._t_mes_queue[self.tid].pop(0)
-            if self.client._t_mes_queue[self.tid]==[]:
+            if self.client._t_mes_queue[self.tid] == []:
                 self.client._t_event[self.tid].clear()
             return data
 
@@ -87,7 +87,8 @@ class Client:
     def transaction(self, ttype):
         def decorator(func):
             async def wrapper(*args, **kwargs):
-                tsc = Client.Transaction(time_ns(), ttype, self, self.context.writer)
+                tsc = Client.Transaction(
+                    time_ns(), ttype, self, self.context.writer)
                 self._t_event[tsc.tid] = Event()
                 self._t_mes_queue[tsc.tid] = []
                 tsc.start()

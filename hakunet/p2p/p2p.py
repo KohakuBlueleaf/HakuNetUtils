@@ -15,11 +15,11 @@ from hakunet.utils import *
 MAINLOOP_DELAY = 0.001
 RECV_TIMEOUT = 1
 DEFAULT_EVENTS = {
-  'on_outbound_connect',
-  'on_inbound_connect',
-  'on_inbound_disconnect',
-  'on_outbound_disconnect',
-  'on_disconnect_outbound',
+    'on_outbound_connect',
+    'on_inbound_connect',
+    'on_inbound_disconnect',
+    'on_outbound_disconnect',
+    'on_disconnect_outbound',
 }
 
 
@@ -56,8 +56,8 @@ class Node(Thread):
 
             self.info = {}
             self.parent_node.debug_print(
-              'NodeContext.send: Started with client'
-              f'({self.id}) on {self.host}:{self.port}'
+                'NodeContext.send: Started with client'
+                f'({self.id}) on {self.host}:{self.port}'
             )
 
         def stop(self):
@@ -105,8 +105,8 @@ class Node(Thread):
         def __str__(self):
             main = self.parent_node
             return (
-              f'<NodeContext: {main.host}:{main.port} <->'
-              f' {self.host}:{self.port} ({self.id})>'
+                f'<NodeContext: {main.host}:{main.port} <->'
+                f' {self.host}:{self.port} ({self.id})>'
             )
         __repr__ = __str__
 
@@ -125,9 +125,9 @@ class Node(Thread):
         self.clients = []
 
         t = (
-          f'{self.host}:{self.port}'
-          f'{getpid()}'
-          f'{random.randint(1, 16**8)}'
+            f'{self.host}:{self.port}'
+            f'{getpid()}'
+            f'{random.randint(1, 16**8)}'
         )
         self.id = shake_256(encode(t)).hexdigest(4)
 
@@ -165,7 +165,8 @@ class Node(Thread):
         self.sock.listen(10)
         if not self.port:
             self.port = self.sock.getsockname()[1]
-        print(f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
+        print(
+            f'Initialise of the Node on port-{self.port} complete on node<{self.id}>')
 
     def create_new_context(self, context, id, host, port):
         return Node.Context(self, context, id, host, port)
@@ -198,12 +199,12 @@ class Node(Thread):
                 n.send(data)
             except Exception as e:
                 self.debug_print(
-                  f'Node send_to_node: Error while sending data to the node ({e})'
+                    f'Node send_to_node: Error while sending data to the node ({e})'
                 )
 
         else:
             self.debug_print(
-              'Node send_to_node: Could not send the data, node is not found!'
+                'Node send_to_node: Could not send the data, node is not found!'
             )
 
     def send(self, data):
@@ -231,15 +232,15 @@ class Node(Thread):
                 send_with_len(context, ['', 0, self.id])
 
                 new_node = self.create_new_context(
-                  context, node_id, client_address[0], client_address[1]
+                    context, node_id, client_address[0], client_address[1]
                 )
                 new_node.start()
 
                 with self.node_list_lock:
-                    if len(node_id)==10:
+                    if len(node_id) == 10:
                         self.clients.append(new_node)
                     else:
-                        #use inbound conn to replace outbound conn
+                        # use inbound conn to replace outbound conn
                         if new_node.id in self.nodes:
                             self.nodes[new_node.id].stop()
                         self.nodes[new_node.id] = new_node
@@ -247,7 +248,8 @@ class Node(Thread):
 
                 if node_data:
                     node_host, node_port, node_id = node_data
-                    self._send_to_nodes(Node.NodeInfo(node_id, node_host, node_port))
+                    self._send_to_nodes(Node.NodeInfo(
+                        node_id, node_host, node_port))
 
             except socket.timeout:
                 self.debug_print('Node: Context timeout!')
@@ -289,7 +291,8 @@ class Node(Thread):
                 send_with_len(sock, [self.host, self.port, self.id])
                 node_data = recv_msg(sock)
 
-                new_node = self.create_new_context(sock, node_data[2], host, port)
+                new_node = self.create_new_context(
+                    sock, node_data[2], host, port)
                 new_node.start()
 
                 with self.node_list_lock:
@@ -300,7 +303,8 @@ class Node(Thread):
                 self.on_outbound_connect(new_node)
             return True
         except Exception as e:
-            self.debug_print('TcpServer.connect_with_node: Could not connect with node. (' + str(e) + ')')
+            self.debug_print(
+                'TcpServer.connect_with_node: Could not connect with node. (' + str(e) + ')')
 
     def callback(self, event, node, args, kwargs):
         if event in self.callbacks:
@@ -322,7 +326,8 @@ class Node(Thread):
             node.join()  # When this is here, the application is waiting and waiting
             del self.nodes[node.id]
         else:
-            print('Node disconnect_with_node: cannot disconnect with a node with which we are not connected.')
+            print(
+                'Node disconnect_with_node: cannot disconnect with a node with which we are not connected.')
 
     def on_outbound_connect(self, node):
         self.debug_print('on_outbound_connect: ' + node.id)
@@ -345,14 +350,15 @@ class Node(Thread):
             self.callback('on_outbound_disconnect', node, [], {})
 
     def on_disconnect_outbound(self, node):
-        self.debug_print('node wants to disconnect with oher outbound node: ' + node.id)
+        self.debug_print(
+            'node wants to disconnect with oher outbound node: ' + node.id)
         if self.callback is not None:
             self.callback('on_disconnect_outbound', node, [], {})
 
     def node_message(self, node, data):
         self.debug_print('node_message: ' + node.id + ': ' + str(data))
         if isinstance(data, Node.NodeInfo):
-            if data.id!=self.id and data.id not in self.nodes:
+            if data.id != self.id and data.id not in self.nodes:
                 self.connect(data.host, data.port)
         else:
             event, args, kwargs = data
@@ -395,8 +401,8 @@ class Client():
 
         except Exception as e:
             self.debug_print(
-              'TcpServer.connect_with_node:'
-              f' Could not connect with node. ({e})'
+                'TcpServer.connect_with_node:'
+                f' Could not connect with node. ({e})'
             )
 
     def __str__(self):

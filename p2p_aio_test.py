@@ -12,23 +12,24 @@ NODE_AMOUNT = 5
 
 def create_node(host) -> Node:
     node = Node(host, 0)
+
     @node.on('message')
     async def message(ctx: Node.Context, message):
         print(
-          '========================\n'
-          f' {ctx.id}  ->  {node.id}\n'
-          f' Mes: {message}\n'
-          '========================'
+            '========================\n'
+            f' {ctx.id}  ->  {node.id}\n'
+            f' Mes: {message}\n'
+            '========================'
         )
         await ctx.emit('reply', 'received')
 
     @node.on('reply')
     async def reply(ctx: Node.Context, message):
         print(
-          '========================\n'
-          f' {ctx.id}  ->  {node.id}\n'
-          f' Reply: {message}\n'
-          '========================'
+            '========================\n'
+            f' {ctx.id}  ->  {node.id}\n'
+            f' Reply: {message}\n'
+            '========================'
         )
 
     return node
@@ -39,15 +40,15 @@ async def make_nodes():
     await main_node.start()
 
     nodes = [
-      create_node('127.0.0.1')
-      for _ in range(NODE_AMOUNT)
+        create_node('127.0.0.1')
+        for _ in range(NODE_AMOUNT)
     ]
 
-    #start node
+    # start node
     for node in nodes:
         await node.start()
 
-    #connect to other node
+    # connect to other node
     for i in range(NODE_AMOUNT):
         await nodes[i].connect('127.0.0.1', 10000)
     await asyncio.sleep(0.01 * NODE_AMOUNT)
@@ -58,11 +59,11 @@ async def main():
     try:
         await make_nodes()
 
-        #print connections of all nodes
+        # print connections of all nodes
         for node in nodes:
             print(sorted(node.nodes))
 
-        #send message test
+        # send message test
         await nodes[0].emit('message', message='message from n0')
         await asyncio.sleep(0.002 * NODE_AMOUNT)
     finally:

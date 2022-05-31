@@ -9,8 +9,8 @@ from asyncio import StreamReader, StreamWriter
 from pickle import dumps, loads
 
 
-encode = lambda x: bytes(x, encoding='utf-8')
-decode = lambda x: bytes.decode(x)
+def encode(x): return bytes(x, encoding='utf-8')
+def decode(x): return bytes.decode(x)
 
 
 def log_error(err, ignore_file_name=[]):
@@ -35,12 +35,12 @@ def log_error(err, ignore_file_name=[]):
         err_file, err_line, err_pos = state.split(', ')
 
         for i in ignore_file_name:
-            if err_file.find(i)!=-1:
+            if err_file.find(i) != -1:
                 break
         else:
             if before_file:
                 output += '-----------------------------\n'
-            if err_file!=before_file:
+            if err_file != before_file:
                 output += f'Error File   : {err_file[5:]}\n'
                 before_file = err_file
 
@@ -173,24 +173,24 @@ class ThDict(dict):
 
 
 def cert_gen(
-  emailAddress="emailAddress",
-  commonName="commonName",
-  countryName="NT",
-  localityName="localityName",
-  stateOrProvinceName="stateOrProvinceName",
-  organizationName="organizationName",
-  organizationUnitName="organizationUnitName",
-  serialNumber=0,
-  validityEndInSeconds=10*365*24*60*60,
-  PATH = '.',
-  KEY_FILE = "private.key",
-  CERT_FILE = "selfsigned.crt"):
+        emailAddress="emailAddress",
+        commonName="commonName",
+        countryName="NT",
+        localityName="localityName",
+        stateOrProvinceName="stateOrProvinceName",
+        organizationName="organizationName",
+        organizationUnitName="organizationUnitName",
+        serialNumber=0,
+        validityEndInSeconds=10*365*24*60*60,
+        PATH='.',
+        KEY_FILE="private.key",
+        CERT_FILE="selfsigned.crt"):
     '''
     generate ssl key and cert
     '''
 
-    #can look at generated file using openssl:
-    #openssl x509 -inform pem -in selfsigned.crt -noout -text
+    # can look at generated file using openssl:
+    # openssl x509 -inform pem -in selfsigned.crt -noout -text
     # create a key pair
     k = crypto.PKey()
     k.generate_key(crypto.TYPE_RSA, 4096)
@@ -211,11 +211,12 @@ def cert_gen(
     cert.set_pubkey(k)
     cert.sign(k, 'sha512')
 
-    #save cert and key
+    # save cert and key
     if not path.isdir(PATH):
         mkdir(PATH)
 
     with open(f'{PATH}/{CERT_FILE}', "wt") as f:
-        f.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cert).decode("utf-8"))
+        f.write(crypto.dump_certificate(
+            crypto.FILETYPE_PEM, cert).decode("utf-8"))
     with open(f'{PATH}/{KEY_FILE}', "wt") as f:
         f.write(crypto.dump_privatekey(crypto.FILETYPE_PEM, k).decode("utf-8"))
