@@ -6,8 +6,7 @@ from hakunet.utils import *
 
 class Client:
     class Context:
-        def __init__(self, reader, writer):
-            self.reader = reader
+        def __init__(self, writer):
             self.writer = writer
 
         async def close(self):
@@ -20,9 +19,6 @@ class Client:
         async def send(self, data):
             write_with_len(self.writer, data)
             await self.writer.drain()
-
-        async def read(self):
-            return await read_msg(self.reader)
 
         def emit(self, event, *args, **kwargs):
             self.writer.send([event, args, kwargs])
@@ -54,7 +50,7 @@ class Client:
         self.port = port
         self.context = None
         self._t_event: dict[str, Event] = {}
-        self._t_mes_queue: dict[str, ] = {}
+        self._t_mes_queue: dict[str, list] = {}
         self.handlers = {}
         self.transactions = {}
 
@@ -73,6 +69,9 @@ class Client:
     async def close(self):
         await self.context.close()
 
+    def is_closing(self):
+        return self.context.is_closing
+
     def on(self, event):
         def decorator(func):
             def wrapper(*args, **kwargs):
@@ -88,7 +87,8 @@ class Client:
         def decorator(func):
             async def wrapper(*args, **kwargs):
                 tsc = Client.Transaction(
-                    time_ns(), ttype, self, self.context.writer)
+                    time_ns(), ttype, self, self.context.writer
+                )
                 self._t_event[tsc.tid] = Event()
                 self._t_mes_queue[tsc.tid] = []
                 tsc.start()
@@ -113,12 +113,12 @@ class Client:
         await self.context.send([event, args, kwargs])
 
     def handle_client(self, reader, writer):
-        self.context = Client.Context(reader, writer)
-        asyncio.ensure_future(self.event_loop())
+        self.context = Client.Context(writer)
+        asyncio.ensure_future(self.event_loop(reader))
 
-    async def event_loop(self):
+    async def event_loop(self, reader):
         while not self.context.is_closing():
-            data = await self.context.read()
+            data = await read_msg(reader)
             if data is None:
                 break
 
@@ -126,8 +126,11 @@ class Client:
                 case ['tsc', [tid, data]]:
                     self._t_mes_queue[tid].append(data)
                     self._t_event[tid].set()
+                
                 case [event, args, kwargs]:
                     if event in self.handlers:
-                        await self.handlers[event](self.context, *args, **kwargs)
+                        await self.handlers[event](
+                            self.context, *args, **kwargs
+                        )
 
         await self.context.close()
