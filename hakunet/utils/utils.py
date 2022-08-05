@@ -1,3 +1,5 @@
+from typing import *
+
 import struct
 import threading
 import socket
@@ -55,7 +57,7 @@ def log_error(err, ignore_file_name=[]):
     print(output)
 
 
-def recv_msg(sock: socket.socket):
+def recv_msg(sock: socket.socket) -> Any:
     raw_msglen = recvall(sock, 4)
     if not raw_msglen:
         return None
@@ -73,7 +75,7 @@ def recvall(sock: socket.socket, n: int):
     return data
 
 
-def send_with_len(sock: socket.socket, data):
+def send_with_len(sock: socket.socket, data) -> None:
     data = dumps(data)
     data = struct.pack('>I', len(data)) + data
     sock.sendall(data)
@@ -126,7 +128,7 @@ class AoiThread(threading.Thread):
         return self._stop_event.is_set()
 
 
-class ThDict(dict):
+class ThDict(dict[Any, Any]):
     '''
     a thread safe dict object
     '''
@@ -134,10 +136,6 @@ class ThDict(dict):
     def __init__(self, *args, **kwargs):
         super(ThDict, self).__init__(*args, **kwargs)
         self.lock = threading.RLock()
-
-    def __getitem__(self, k):
-        with self.lock:
-            return super(ThDict, self).__getitem__(k)
 
     def __getitem__(self, k):
         with self.lock:

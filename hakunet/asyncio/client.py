@@ -1,12 +1,26 @@
-from asyncio import open_connection, sleep, Event
+from typing import Any
+
+import asyncio
+from asyncio import open_connection, sleep
+from asyncio import Event, StreamWriter, StreamReader
 from time import time_ns
 
 from hakunet.utils import *
 
 
+#Export
+__all__ = ['Client']
+
+
+#Type Aliases
+EventHandler = Callable[["Client.Context", Any], Awaitable[None]]
+Transaction = Callable[["Client.Transaction", Any], Awaitable[Any]]
+
+
+
 class Client:
     class Context:
-        def __init__(self, writer):
+        def __init__(self, writer: StreamWriter):
             self.writer = writer
 
         async def close(self):
@@ -20,11 +34,17 @@ class Client:
             write_with_len(self.writer, data)
             await self.writer.drain()
 
-        def emit(self, event, *args, **kwargs):
-            self.writer.send([event, args, kwargs])
+        def emit(self, event: str, *args, **kwargs):
+            self.send([event, args, kwargs])
 
     class Transaction:
-        def __init__(self, tid, ttype, client, writer):
+        def __init__(
+            self, 
+            tid: int, 
+            ttype: str, 
+            client: "Client", 
+            writer: StreamWriter
+        ):
             self.tid = tid
             self.ttype = ttype
             self.client = client
@@ -45,14 +65,14 @@ class Client:
                 self.client._t_event[self.tid].clear()
             return data
 
-    def __init__(self, host, port):
+    def __init__(self, host: str, port: str|int):
         self.host = host
         self.port = port
-        self.context = None
-        self._t_event: dict[str, Event] = {}
-        self._t_mes_queue: dict[str, list] = {}
-        self.handlers = {}
-        self.transactions = {}
+        self.context: Client.Context
+        self.handlers: dict[str, EventHandler] = {}
+        self.transactions: dict[str, Transaction] = {}
+        self._t_event: dict[int, Event] = {}
+        self._t_mes_queue: dict[int, list[Any]] = {}
 
     async def __aenter__(self):
         reader, writer = await open_connection(self.host, self.port)
@@ -83,8 +103,8 @@ class Client:
     def on_event(self, event, func):
         self.handlers[event] = func
 
-    def transaction(self, ttype):
-        def decorator(func):
+    def transaction(self, ttype: str):
+        def decorator(func: Transaction) -> Transaction:
             async def wrapper(*args, **kwargs):
                 tsc = Client.Transaction(
                     time_ns(), ttype, self, self.context.writer
@@ -103,16 +123,17 @@ class Client:
 
         return decorator
 
-    async def tsc(self, ttype, *args, **kwargs):
+    async def tsc(self, ttype: str, *args, **kwargs):
         return await self.transactions[ttype](*args, **kwargs)
 
-    async def start_transaction(self, tsc):
-        await self.transactions[tsc]
-
-    async def emit(self, event, *args, **kwargs):
+    async def emit(self, event: str, *args, **kwargs):
         await self.context.send([event, args, kwargs])
 
-    def handle_client(self, reader, writer):
+    def handle_client(
+        self, 
+        reader: StreamReader, 
+        writer: StreamWriter,
+    ):
         self.context = Client.Context(writer)
         asyncio.ensure_future(self.event_loop(reader))
 

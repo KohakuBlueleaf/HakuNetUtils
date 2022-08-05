@@ -1,13 +1,29 @@
-from dataclasses import dataclass
-import random
+from typing import *
 
-from asyncio import open_connection, Event
+import random
+import socket
+import asyncio
+
 from os import getpid
 from hashlib import shake_256
 from traceback import format_exc
-from typing import Callable
+from dataclasses import dataclass
+from asyncio import open_connection, Event, Server
+from asyncio import StreamReader, StreamWriter
+
 
 from hakunet.utils import *
+
+
+#Export
+__all__ = [
+    "DEFAULT_EVENTS",
+    "Node",
+]
+
+
+#Type Aliases
+NodeCallback = Callable[["Node.Context", Any], Coroutine]
 
 
 MAINLOOP_DELAY = 0.001
@@ -41,15 +57,23 @@ class Node:
     class Context:
         '''context obj for node connection'''
 
-        def __init__(self, parent_node, reader, writer, id, host, port):
-            self.id: str = id
-            self.host: str = host
-            self.port: int = port
+        def __init__(
+            self, 
+            parent_node: "Node",
+            reader: StreamReader,
+            writer: StreamWriter,
+            id: str,
+            host: str,
+            port: str|int,
+        ):
+            self.id = id
+            self.host = host
+            self.port = port
 
             self.start_flag = Event()
             self.reader = reader
             self.writer = writer
-            self.parent_node: "Node" = parent_node
+            self.parent_node = parent_node
 
             self.parent_node.debug_print(
                 'NodeContext.send: Started with client'
@@ -98,14 +122,19 @@ class Node:
                 f' {self.host}:{self.port} ({self.id})>'
             )
         __repr__ = __str__
-
-    def __init__(self, host, port, debug=False):
+    
+    def __init__(
+        self, 
+        host: str, 
+        port: str|int, 
+        debug = False,
+    ):
         self.host = host
         self.port = port
 
-        self.callbacks: dict[str, Callable] = {}
+        self.callbacks: dict[str, NodeCallback] = {}
         self.nodes: dict[str, Node.Context] = {}
-        self.clients = []
+        self.clients: list["Node.Context"] = []
 
         t = (
             f'{self.host}:{self.port}'
@@ -114,7 +143,10 @@ class Node:
         )
         self.id = shake_256(encode(t)).hexdigest(4)
 
-        self.server = asyncio.start_server(self.handle_client, host, port)
+        self.server: Server
+        self.server_starter = asyncio.start_server(
+            self.handle_client, host, port
+        )
         self.stop_flag = Event()
         self.stop_flag.clear()
 
@@ -148,7 +180,7 @@ class Node:
 
     async def start(self):
         async def main():
-            self.server = await self.server
+            self.server = await self.server_starter
             addrs = [sock.getsockname() for sock in self.server.sockets][0]
             self.host = addrs[0]
             self.port = addrs[1]
@@ -167,8 +199,14 @@ class Node:
             await n.stop()
         print(f'Node {self.id} stopped.')
 
-    async def handle_client(self, reader, writer):
-        chost, cport = writer.get_extra_info('socket').getpeername()
+    async def handle_client(
+        self, 
+        reader: StreamReader,
+        writer: StreamWriter,
+    ):
+        sock: socket.socket = writer.get_extra_info('socket')
+        chost, cport = sock.getpeername()
+        
         node_data = await read_msg(reader)
         if node_data is not None:
             node_host, node_port, node_id = node_data
@@ -274,11 +312,11 @@ class Node:
     async def emit_to(self, target, event, *args, **kwargs):
         await self._send_to_node(target, [event, args, kwargs])
 
-    def on_event(self, event: str, callback: Callable):
+    def on_event(self, event: str, callback: NodeCallback):
         self.callbacks[event] = callback
 
     def on(self, event: str):
-        def decorator(callback):
+        def decorator(callback: NodeCallback):
             self.callbacks[event] = callback
             return callback
         return decorator
@@ -331,50 +369,3 @@ class Node:
         else:
             event, args, kwargs = data
             await self.callback(event, node, args, kwargs)
-
-
-class Client():
-    def __init__(self, debug=False):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        t = f'Client_Node {getpid()}{random.randint(1, 16**10)}'
-        self.id = shake_256(t).hexdigest(10)
-
-        self.message_count_send = 0
-        self.message_count_recv = 0
-        self.message_count_rerr = 0
-
-        self.debug = debug
-        print(f'Initialisation of the Node as Client')
-
-    def debug_print(self, message):
-        if self.debug:
-            print(f'Debug: {message}')
-
-    def send(self, data):
-        self.message_count_send = self.message_count_send + 1
-        send_with_len(self.sock, data)
-
-    def recv(self):
-        return recv_msg(self.sock)
-
-    def connect(self, host, port):
-        try:
-            self.debug_print(f'connecting to {host} port {port}')
-            self.sock.connect((host, port))
-
-            send_with_len(self.sock, self.id)
-            node_data = recv_msg(self.sock)
-            self.server_id = node_data[2]
-
-        except Exception as e:
-            self.debug_print(
-                'TcpServer.connect_with_node:'
-                f' Could not connect with node. ({e})'
-            )
-
-    def __str__(self):
-        return 'Node: {}:{}'.format(self.host, self.port)
-
-    def __repr__(self):
-        return '<Node {}:{} id: {}>'.format(self.host, self.port, self.id)

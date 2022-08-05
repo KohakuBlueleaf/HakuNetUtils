@@ -117,7 +117,7 @@ class Node(Thread):
         self.host = host
         self.port = port
 
-        self.callbacks: dict[str, Callable] = {}
+        self.callbacks: dict[str, Callable[[Node.Context, Any], None]] = {}
 
         self.nodes: dict[str, Node.Context] = ThDict()
         self.node_list_lock = RLock()
@@ -310,7 +310,7 @@ class Node(Thread):
         if event in self.callbacks:
             self.callbacks[event](node, *args, **kwargs)
 
-    def on_event(self, event: str, callback: Callable):
+    def on_event(self, event: str, callback: Callable[["Node.Context", Any], None]):
         self.callbacks[event] = callback
 
     def on(self, event: str):
@@ -363,50 +363,3 @@ class Node(Thread):
         else:
             event, args, kwargs = data
             self.callback(event, node, args, kwargs)
-
-
-class Client():
-    def __init__(self, debug=False):
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-
-        t = f'Client_Node {getpid()}{random.randint(1, 16**10)}'
-        self.id = shake_256(t).hexdigest(10)
-
-        self.message_count_send = 0
-        self.message_count_recv = 0
-        self.message_count_rerr = 0
-
-        self.debug = debug
-        print(f'Initialisation of the Node as Client')
-
-    def debug_print(self, message):
-        if self.debug:
-            print(f'Debug: {message}')
-
-    def send(self, data):
-        self.message_count_send = self.message_count_send + 1
-        send_with_len(self.sock, data)
-
-    def recv(self):
-        return recv_msg(self.sock)
-
-    def connect(self, host, port):
-        try:
-            self.debug_print(f'connecting to {host} port {port}')
-            self.sock.connect((host, port))
-
-            send_with_len(self.sock, self.id)
-            node_data = recv_msg(self.sock)
-            self.server_id = node_data[2]
-
-        except Exception as e:
-            self.debug_print(
-                'TcpServer.connect_with_node:'
-                f' Could not connect with node. ({e})'
-            )
-
-    def __str__(self):
-        return 'Node: {}:{}'.format(self.host, self.port)
-
-    def __repr__(self):
-        return '<Node {}:{} id: {}>'.format(self.host, self.port, self.id)
